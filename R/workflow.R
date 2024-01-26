@@ -10,46 +10,40 @@ source("R/guess.R")
 raw_files_paths <- file.path("data/", list.files("data/"))
 
 
-# 1. Reformat your files in bulk
-walk(raw_files_paths,
-     ~reformat_sdr(.x, output = "output/processed/")
-)
+# 1. Reformat your files 
+# Single file
+data <- reformat_sdr("data/Block1-MR1_20hpf-20C-120523-1015_Oxygen.xlsx") 
 
+# Bulk processing
 processed <- map(raw_files_paths,
      ~reformat_sdr(.x)
 )
 
 
-# 2. Guess and rename blanks
+# 2. Guess blanks (Optional)
+# Single file
+blank_ids <- guess_blanks(data)
+
+# Bulk processing
+blank_ids_ls <- map(processed,
+                 ~guess_blanks(.x))
 
 
-
-
-
-
-
-data <- reformat_sdr("data/Block1-MR1_20hpf-20C-120523-1015_Oxygen.xlsx") 
-
-
-  rename_blanks(c(A3, B3, C3, D3, A6, B6, D6, C6, D1, D4, C2, C5)) 
-
-detect_subjects(data)
-
-data_no_sensor <- 
-  remove_header("data/Block1-MR1_20hpf-20C-120523-1015_Oxygen.xlsx") |> 
-  remove_additional_sensor_columns() |> 
-  remove_No_Sensor() 
-
-data_no_sensor |> filter(if_any(everything(), ~is.na(.)))
-
-
-  create_elapsed_time() |> 
-  create_date_time_cols() 
-
+# 3. Rename blanks
+# Single file
+# If you didn't guess blanks, you can manually type out the ID for the blanks *no quotes!
 data |> 
-  rename_blanks(c(A3, B3, C3, D3, A6, B6, D6, C6, D1, D4, C2, C5)) 
+  rename_blanks(c(D1, D2, A3, B3, C3, D3, D4, D5, A6, B6, C6, D6))
 
-  
+# Bulk processing
+blanks_renamed <- map2(.x = processed, 
+                            .y =blank_ids_ls,
+                         ~rename_blanks(.x, tidyselect::all_of(.y))
+)
+
+
+
+
 
 
 

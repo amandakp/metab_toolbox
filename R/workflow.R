@@ -49,21 +49,23 @@ subjects <- detect_subjects(blank_single)
 map(blanks_renamed,
     ~detect_subjects(.x))
 
-# -------------------------------------
-# Create a key the user has to complete
-key_unfilled <- tibble(subj = subjects,
-                       true_id = NA_character_)
+# 5. Create 'key' and assign true subject ids to placeholders
+# Single file
+create_subj_key(blank_single)
+
+# Bulk processing
+map(blanks_renamed,
+    ~create_subj_key(.x))
+
+
+# ---------
 # Create some fake ids
 ids <- paste(sample(LETTERS, size = nrow(key_unfilled)),
              sample(1:1000, size = nrow(key_unfilled)), sep="_")
 
 # We've filled in the key now
-key_filled <- mutate(key_unfilled, 
+key_filled <- mutate(key_unfilled,
                      true_id = ids)
-
-
-
-blank_single
 
 
 

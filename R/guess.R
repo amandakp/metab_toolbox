@@ -1,3 +1,12 @@
+#' Guess blanks based on threshold
+#'
+#' @param data 
+#' @param threshold 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 guess_blanks <-function(data, 
                         threshold = 90){
   # Isolate data
@@ -16,5 +25,16 @@ guess_blanks <-function(data,
     dplyr::pull(id)
   
   ids_ordered
+}
+
+rename_subjects <- function(data, key){
+  # Isolate data
+  exp_data <- data |> 
+    dplyr::select(-c(date:elapsed_time, starts_with("control")))
+  
+  # Check order from key matches data
+  if(all(names(exp_data) == key$subj))
+    names(exp_data) <- key$true_id
+  
 }
 

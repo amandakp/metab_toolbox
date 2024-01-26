@@ -1,3 +1,47 @@
+#' Reformat SDR output 
+#'
+#' @param file 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+reformat_sdr <- function(file,
+                         output = NULL){
+  processed <- remove_header(file) |> 
+    remove_additional_sensor_columns() |> 
+    remove_No_Sensor() |> 
+    create_elapsed_time() |> 
+    create_date_time_cols() |> 
+    change_data_formats()
+  
+  # Save the output as a .csv
+  if(!is.null(output)){
+    # Determine file names
+    file_nms <- stringr::str_extract(file, stringr::regex(".*(?=.xlsx)")) |> 
+      stringr::str_split(pattern = "/") |> purrr::pluck(1)
+    
+    # Best guess at the original file name
+    file_nm <- file_nms[length(file_nms)]
+    
+    # Check if it ends with /
+    if(stringr::str_detect(output, "/$", negate = TRUE)){
+      output_path <- paste0(output,"/")
+    } else output_path <- output
+    
+    # Check if output path exists
+    if(file.exists(output_path)){
+      readr::write_csv(data, paste0(output_path,file_nm,"_reformatted.csv"))
+    } else {
+      dir.create(output)
+      readr::write_csv(data, paste0(output_path,file_nm,"_reformatted.csv"))
+    }
+  }
+  
+  return(processed)
+}
+
+
 #' Remove header of SDR output file
 #'
 #' @param file 
@@ -6,8 +50,7 @@
 #' @export
 #'
 #' @examples
-remove_header <- function(file = "data/Block1-MR1_20hpf-20C-120523-1015_Oxygen.xlsx",
-                          output = NULL){
+remove_header <- function(file = "data/Block1-MR1_20hpf-20C-120523-1015_Oxygen.xlsx"){
   
   # Read in file
   suppressMessages(
@@ -26,29 +69,6 @@ remove_header <- function(file = "data/Block1-MR1_20hpf-20C-120523-1015_Oxygen.x
   
   # Delete first row
   data <- no_header[-1,] |> tibble::tibble()
-  
-  # Save the output as a .csv
-  if(!is.null(output)){
-    # Determine file names
-    file_nms <- stringr::str_extract(file, stringr::regex(".*(?=.xlsx)")) |> 
-      stringr::str_split(pattern = "/") |> purrr::pluck(1)
-    
-    # Best guess at the original file name
-    file_nm <- file_nms[length(file_nms)]
-  
-    # Check if it ends with /
-    if(stringr::str_detect(output, "/$", negate = TRUE)){
-      output_path <- paste0(output,"/")
-    }
-      
-    # Check if output path exists
-    if(file.exists(output_path)){
-      readr::write_csv(data, paste0(output_path,file_nm,"_noheader.csv"))
-    } else {
-      dir.create(output_path)
-      readr::write_csv(data, paste0(output_path,file_nm,"_noheader.csv"))
-    }
-  }
   
   return(data)
 }
@@ -96,14 +116,17 @@ remove_No_Sensor <- function(data,
     unname() |> 
     unique()
   
-  if(length(row_starts) > 1) warning("`No Sensor` detected on some vials, replacing `No Sensor` with NA")
+  if(length(row_starts) > 1){
+    warning("`No Sensor` detected for some vials, replacing `No Sensor` with NA")
+    no_sensor <- data[1:min(row_starts),] 
     
-  no_sensor <- data[1:min(row_starts),] 
-
-  # Replace No Sensor with NA
-  replaced <- apply(no_sensor, c(1,2), function(x) gsub("No Sensor",NA_character_, x)) |> tibble::tibble()
-  replaced_data <- replaced$`apply(...)`  |> tibble::as_tibble()
-  
+    # Replace No Sensor with NA
+    replaced <- apply(no_sensor, c(1,2), function(x) gsub("No Sensor",NA_character_, x)) |> tibble::tibble()
+    replaced_data <- replaced$`apply(...)`  |> tibble::as_tibble()
+  } else {
+    replaced_data <- data[1:min(row_starts) - 1,] 
+  }
+    
   return(replaced_data)
 }
   
@@ -187,6 +210,51 @@ create_date_time_cols <- function(data){
     dplyr::select(date, time, dplyr::everything()) |> 
     dplyr::select(-`Date/Time`) 
     
+}
+
+
+#' Detect subjects for renaming
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+detect_subjects <-function(data){
+  # Pull out var names for subjects
+  subjs <- stringr::str_subset(names(data), "control|time|date|elapsed", negate = TRUE) |> sort()
+  
+  # Pull out the numbers
+  number_order <- stringr::str_extract(subjs, "[:digit:]") |> as.numeric()
+  
+  subj_ordered <- tibble::tibble(subj = subjs,
+                 order = number_order) |> 
+    dplyr::arrange(order) |> 
+    dplyr::pull(subj)
+  
+  # Custom message
+  message(paste0("Subjects in this run: ", paste(subj_ordered, collapse = " ")))
+  
+  return(subj_ordered)
+}
+
+#' Change experimental data from character to numeric
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+change_data_formats <- function(data){
+  # Isolate data
+  exp_data_cols <- data |> 
+    dplyr::select(-c(date:elapsed_time)) |> 
+    names()
+  
+  data |> 
+    mutate(across(all_of(exp_data_cols), as.numeric))
 }
 
 

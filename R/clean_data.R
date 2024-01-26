@@ -107,6 +107,86 @@ remove_No_Sensor <- function(data,
   return(replaced_data)
 }
   
+#' Rename empty vials sequentially
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+rename_blanks <- function(data,
+                          blank_cols,
+                          replace_name = "control"){
+  # Select the blank lanes
+  blanks <- data |> 
+    dplyr::select({{blank_cols}}) 
+  
+  # Retain original names 
+  original_names <- names(blanks)
+  
+  # Create new names, holding info about old names 
+  new_names <- paste0(replace_name, "_", original_names)
+  
+  # Rename the blank lanes data
+  names(blanks) <- new_names
+  
+  # Grab all non-blank data
+  data |> 
+    dplyr::select(-{{blank_cols}}) |> 
+    dplyr::bind_cols(blanks)
+}
 
+#' Create elapsed time column
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_elapsed_time <-function(data){
+  data |> 
+    dplyr::rename(elapsed_time = `Time/Min.`) |> 
+    dplyr::mutate(elapsed_time = round(as.numeric(elapsed_time),2))
+}
+
+
+#' Create seperate columns for date and time
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+create_date_time_cols <- function(data){
+  # Split up date string
+  list_dt <- stringr::str_split(data$`Date/Time`, " ") 
+  
+  # Extract dates
+  dates <- purrr::map(list_dt,
+                      purrr::pluck(1)) |> 
+    purrr::list_c()
+  
+  # Replace seperators . with / 
+  date_slash <- stringr::str_replace_all(dates, "\\.", "/")
+  
+  # Treat dates as dates
+  date_correct <- lubridate::mdy(date_slash)
+  
+  # Extract times
+  times <- purrr::map(list_dt,
+                      purrr::pluck(2)) |> 
+    purrr::list_c()
+  
+  # Replace old Date/Time with new columns
+  data |> 
+    dplyr::mutate(date = date_correct,
+                  time = times) |> 
+    dplyr::select(date, time, dplyr::everything()) |> 
+    dplyr::select(-`Date/Time`) 
+    
+}
 
 

@@ -213,32 +213,6 @@ create_date_time_cols <- function(data){
 }
 
 
-#' Detect subjects for renaming
-#'
-#' @param data 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-detect_subjects <-function(data){
-  # Pull out var names for subjects
-  subjs <- stringr::str_subset(names(data), "control|time|date|elapsed", negate = TRUE) |> sort()
-  
-  # Pull out the numbers
-  number_order <- stringr::str_extract(subjs, "[:digit:]") |> as.numeric()
-  
-  subj_ordered <- tibble::tibble(subj = subjs,
-                 order = number_order) |> 
-    dplyr::arrange(order) |> 
-    dplyr::pull(subj)
-  
-  # Custom message
-  message(paste0("Subjects in this run: ", paste(subj_ordered, collapse = " ")))
-  
-  return(subj_ordered)
-}
-
 #' Change experimental data from character to numeric
 #'
 #' @param data 

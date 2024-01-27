@@ -5,6 +5,7 @@ pacman::p_load(readxl, dplyr, purrr, lubridate, stringr, readr)
 # Load functions 
 source("R/clean_data.R")
 source("R/guess.R")
+source("R/menu.R")
 
 # Locate files
 raw_files_paths <- file.path("data/", list.files("data/"))
@@ -41,31 +42,44 @@ blanks_renamed <- map2(.x = processed,
                          ~rename_blanks(.x, tidyselect::all_of(.y))
 )
 
-# 4. Detect subjects (lanes that contain live organisms)
+
+# 4. Enter ids for lane placeholders 
+# Remember to assign to object otherwise progress or renamed output will not be saved
+# If you choose Quit it returns key and you can resume later
 # Single file
-subjects <- detect_subjects(blank_single)
+in_progress <- assign_subj_ids(blank_single)
 
-# Bulk processing
-map(blanks_renamed,
-    ~detect_subjects(.x))
+# If you break the cycle during renaming and want to resume
+resumed <- assign_subj_ids(blank_single, key = in_progress)
 
-# 5. Create 'key' and assign true subject ids to placeholders
+# Create some fake ids for testing
+key_filled <- tibble::tibble(subj = detect_subjects(blank_single),
+                             true_id = paste(sample(LETTERS, size = length(detect_subjects(blank_single))),
+                                             sample(1:1000, size = length(detect_subjects(blank_single))), sep="_")
+)
+
+# Giving function a prefilled key, Choose "Update column names"
+renamed <- assign_subj_ids(blank_single, key = key_filled)
+
+# Bulk processing is possible but can get other of hand if you decide to terminate early
+test_bulk_rename <- map(blanks_renamed,
+    ~assign_subj_ids(.x))
+
+# 5. Save the output in whatever method you like
 # Single file
-create_subj_key(blank_single)
+write_csv(renamed, "output/processed/file_name_renamed.csv")
 
-# Bulk processing
-map(blanks_renamed,
-    ~create_subj_key(.x))
+# Bulk saving
+original_file_names <- map(list.files("data/"),
+    ~extract_file_name(.x)) |> 
+  list_c()
 
+walk2(.x = test_bulk_rename,
+      .y = original_file_names,
+      ~write_csv(.x, paste0("output/processed/", Sys.Date(), "_", .y, "cleaned_",".csv"))
+)
+               
 
-# ---------
-# Create some fake ids
-ids <- paste(sample(LETTERS, size = nrow(key_unfilled)),
-             sample(1:1000, size = nrow(key_unfilled)), sep="_")
-
-# We've filled in the key now
-key_filled <- mutate(key_unfilled,
-                     true_id = ids)
 
 
 

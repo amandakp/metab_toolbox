@@ -27,6 +27,14 @@ guess_blanks <-function(data,
   ids_ordered
 }
 
+#' Title
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 create_subj_key <- function(data){
   # Create a key the user has to complete
   key_unfilled <- tibble::tibble(subj = detect_subjects(data),
@@ -35,7 +43,31 @@ create_subj_key <- function(data){
   return(key_unfilled)
 }
 
-
+#' Detect subjects for renaming
+#'
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+detect_subjects <-function(data){
+  # Pull out var names for subjects
+  subjs <- stringr::str_subset(names(data), "control|time|date|elapsed", negate = TRUE) |> sort()
+  
+  # Pull out the numbers
+  number_order <- stringr::str_extract(subjs, "[:digit:]") |> as.numeric()
+  
+  subj_ordered <- tibble::tibble(subj = subjs,
+                                 order = number_order) |> 
+    dplyr::arrange(order) |> 
+    dplyr::pull(subj)
+  
+  # Custom message
+  cat("Subjects in this run: ", paste(subj_ordered, collapse = " "), "\n")
+  invisible(subj_ordered)
+  
+}
 
 #' Rename subjects according to key
 #'
@@ -55,15 +87,18 @@ rename_subjects <- function(data, key){
   blanks <- data |> 
     dplyr::select(starts_with("control"))
   
-  # Check order from key matches data
+  # Check length from key matches data
+  if(!nrow(key) == ncol(exp_data))
+    stop("Key dimensions does not match number of subjects in data - check and try again")
+  
   if(all(names(exp_data) == key$subj))
     names(exp_data) <- key$true_id
   
   # Add back in other data
   output <- data |> 
     dplyr::select(date:elapsed_time) |> 
-    bind_cols(exp_data) |> 
-    bind_cols(blanks)
+    dplyr::bind_cols(exp_data) |> 
+    dplyr::bind_cols(blanks)
   
   # Check dimensions
   if(all(dim(data) == dim(output))){

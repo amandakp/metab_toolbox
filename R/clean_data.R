@@ -107,8 +107,9 @@ remove_No_Sensor <- function(data,
   # Detect No Sensor row
   detect <- lapply(data, grep, pattern = 'No Sensor') 
   
+  # Star of No Sensor
   row_starts <- purrr::map(detect,
-             ~.x[1]) |> 
+             ~dplyr::first(.x)) |> 
     purrr::map(purrr::discard, is.na) |> 
     purrr::compact() |> 
     purrr::list_transpose() |> 
@@ -116,6 +117,17 @@ remove_No_Sensor <- function(data,
     unname() |> 
     unique()
   
+  # End of No Sensor
+  row_ends <- purrr::map(detect,
+                         ~dplyr::last(.x)) |> 
+    purrr::map(purrr::discard, is.na) |> 
+    purrr::compact() |> 
+    purrr::list_transpose() |> 
+    purrr::pluck(1) |> 
+    unname() |> 
+    unique()
+  
+  # Partial No Sensor
   if(length(row_starts) > 1){
     warning("`No Sensor` detected for some vials, replacing `No Sensor` with NA")
     no_sensor <- data[1:min(row_starts),] 
@@ -123,7 +135,14 @@ remove_No_Sensor <- function(data,
     # Replace No Sensor with NA
     replaced <- apply(no_sensor, c(1,2), function(x) gsub("No Sensor",NA_character_, x)) |> tibble::tibble()
     replaced_data <- replaced$`apply(...)`  |> tibble::as_tibble()
-  } else {
+  } 
+  
+  # When data starts with No Sensor
+  if(row_starts == 1){
+    replaced_data <- data[-c(row_starts:row_ends),]
+  }
+  # When No Sensor is in the middle of the sheet
+  else {
     replaced_data <- data[1:min(row_starts) - 1,] 
   }
     
@@ -231,4 +250,22 @@ change_data_formats <- function(data){
     mutate(across(all_of(exp_data_cols), as.numeric))
 }
 
+#' Extract file name
+#'
+#' @param file 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+extract_file_name <- function(file){
+  # Determine file names
+  file_nms <- stringr::str_extract(file, stringr::regex(".*(?=.xlsx)")) |> 
+    stringr::str_split(pattern = "/") |> purrr::pluck(1)
+  
+  # Best guess at the original file name
+  file_nm <- file_nms[length(file_nms)]
+  
+  return(file_nm)
+}
 

@@ -13,7 +13,14 @@ raw_files_paths <- file.path("data/", list.files("data/"))
 
 # 1. Reformat your files 
 # Single file
-data <- reformat_sdr("data/Block1-MR1_25hpf-16C-120523-1015_Oxygen.xlsx") 
+data <- reformat_sdr("data/Block1-MR1_20hpf-20C-120523-1022_Oxygen.xlsx") 
+
+remove_header("data/Block1-MR1_20hpf-20C-120523-1022_Oxygen.xlsx") |> 
+  remove_additional_sensor_columns() |> 
+  remove_No_Sensor() |> 
+  create_elapsed_time() |> 
+  create_date_time_cols() |> 
+  change_data_formats()
 
 # Bulk processing
 processed <- map(raw_files_paths,

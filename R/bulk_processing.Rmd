@@ -1,0 +1,57 @@
+---
+title: "Bulk processing"
+author: "Fonti Kar"
+date: "2024-01-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Install/Load packages
+# install.packages("pacman")
+pacman::p_load(readxl, dplyr, purrr, lubridate, stringr, readr)
+
+# Load functions 
+source("R/clean_data.R")
+source("R/guess.R")
+source("R/menu.R")
+```
+
+### Locate folder
+
+Please provide the relative path to the folder containing your raw data output from the SDR.
+This code will list all the files out in the folder and create relative paths for each.
+
+```{r}
+path <- "data/"
+
+raw_files_paths <- file.path(path, list.files(path))
+raw_files_paths
+```
+
+### Reformat data
+
+```{r}
+
+```
+
+### Identifying/Guessing blanks
+
+```{r}
+
+```
+
+### Renaming blanks
+
+```{r}
+
+```
+
+### Renaming subject lanes
+
+```{r}
+
+```
+
+### Saving output

@@ -20,15 +20,21 @@ source("R/menu.R")
 
 ### Locate folder
 
-Please provide the relative path to the folder containing your raw data output from the SDR.
 This code will list all the files out in the folder and create relative paths for each.
 
+Tip: If your files are not in this project folder, `"~/"` will take you to the root of your computer folders. From there, use the Tab key to look and navigate to the folder that holds your file
+
 ```{r}
+# Folder containing data
 path <- "data/"
 
+# List all the files inside the folder
+file.path(path, list.files(path))
+
+# Assign these file names into an object
 raw_files_paths <- file.path(path, list.files(path))
-raw_files_paths
 ```
+
 
 ### Reformat data
 

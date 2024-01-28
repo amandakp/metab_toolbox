@@ -6,52 +6,161 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 # Install/Load packages
 # install.packages("pacman")
-pacman::p_load(readxl, dplyr, purrr, lubridate, stringr, readr)
+pacman::p_load(readxl, dplyr, purrr, lubridate, stringr, readr, here)
 
 # Load functions 
-source("R/clean_data.R")
-source("R/guess.R")
-source("R/menu.R")
+source(here("R/clean_data.R"))
+source(here("R/guess.R"))
+source(here("R/menu.R"))
 ```
 
-### Locate folder
+### Locate file and reformat data
 
-Please provide the relative path to the folder containing your raw data output from the SDR.
-This code will list all the files out in the folder and create relative paths for each.
+Please provide the relative path to the file of the SDR output.
+
+The `file.choose()` function allows you to choose the file you want to clean. 
+
+The `reformat_sdr()` function calls several sub-functions to clean the raw data:
+
+1. `remove_header()`, to remove the top part of the output file
+2. `remove_additional_sensor_columns()`, to remove the extra columns on the right side of the output file 
+3. `remove_No_Sensor()`, to remove rows where no sensory was detected by the SDR
+4. `create_elapsed_time()`, to rename `Time/Min` column to `elapsed_time`
+5. `create_date_time_cols()`, to create separate columns for date and time of measurement
+6. `change_data_formats()`, to set the `date` as a date variable and the `elapsed_time` and each lane's data as numeric variables. 
+
+ Remember to assign the output to an object!
 
 ```{r}
-path <- "data/"
+# Choose your file
+file <- file.choose()
 
-raw_files_paths <- file.path(path, list.files(path))
-raw_files_paths
+# Reformat file and assign to data
+data <- reformat_sdr(file)
+
+# Look at data
+data
 ```
 
-### Reformat data
-
-```{r}
-
-```
 
 ### Identifying/Guessing blanks
 
-```{r}
+Next we will identify the blank or empty lanes with the`guess_blanks()` function. The idea behind this function is to take the lanes that have an average air saturation over a particular `threshold`. 
 
+To illustrate, lets calculate the average air saturation for all lanes:
+
+```{r}
+data |> 
+  select(A1:D6) |> # Select the lanes
+  colMeans() |> # Compute means for each column
+  round(2) # Round to 2 decimal places
 ```
+ 
+Now let's try it out the `guess_blanks()` function. By default, the threshold is set at `90`. You will have to adjust this for lower temperatures or very tiny organisms. Remember to assign the output to an object!
+
+```{r}
+blank_lanes <- guess_blanks(data, threshold = 90)
+blank_lanes
+```
+
+If `guess_blanks` is not working well, you can also manually enter the ID of the blanks in the next step
 
 ### Renaming blanks
 
-```{r}
+Next we will rename the blank lanes by adding a prefix to their lane IDs. By default the prefix is `control`, you can change this with the `replace_name` argument. The blanks are renamed sequentially according the order of input. 
 
-```
-
-### Renaming subject lanes
+Here we are using the `blank_lanes` identified by the previous function for renaming. Remember to assign the output to an object!
 
 ```{r}
+renamed_blanks <- data |> 
+  rename_blanks(all_of(blank_lanes))
 
+renamed_blanks
 ```
+
+Alternatively, you can manually type in the ID of the blank lanes. Here we are also changing the prefix to `blank_` as well. *Note, no quotes about each ID. 
+
+```{r}
+data |> 
+  rename_blanks(c(D1, D2, D3, D4, D5, D6), replace_name = "blank") |> 
+  names() 
+```
+
+### Assigning IDs to subject lanes
+
+Now we can proceed to renaming the lanes that contained actual subjects with the `assign_subj_ids()` function. The function will bring up an empty "key" where the default lane ID is in column `subj`. You will be populating the adjacent column `true_id`. 
+
+**Remember to assign the output of the function to an object, otherwise your progress will not be saved!**
+
+The function `assign_subj_ids()` will bring up an interactive menu in the console. There are three options to choose from in the top menu: 
+
+1. Assign ID to lane
+2. Quit
+3. Update column names
+
+Type the number next to the desired option to make the selection
+
+```{r}
+naming_lanes <- assign_subj_ids(renamed_blanks)
+```
+
+#### Renaming lane IDs
+
+Selecting option 1, will bring up all your all the subject lanes in your data. Each will have a number next to the lane ID. Type in the number next to the lane ID that you wish to edit. 
+
+You will then be prompted to type a new value that will replace the default lane ID. Hit enter to submit your value.
+
+The `true_id` for key will be updated with your value the menu will cycle again. Continue to select option 1 if you wish to continue renaming the default lane IDs. 
+
+#### Made a mistake? 
+
+No worries, just go to option 1 and select the ID you wish to edit again. 
+
+#### Saving progress
+
+Need to take a break from renaming, no problem. Select option 2 and the function will break and your in-progress-key will be saved in the `naming_lanes` object. 
+
+```{r}
+naming_lanes
+```
+
+
+#### Resume progress
+
+If you would like to resume renaming the lane ids, simply provide the `naming_lanes` object into the `assign_subj_ids()` again using the `key` argument. Again, remember to assign the output of the function to an object. In this circumstance, I think its sensible to reassign the function to the same object i.e. `naming_lanes`. 
+
+```{r}
+naming_lanes <- assign_subj_ids(renamed_blanks, key = naming_lanes)
+```
+
+#### Update rename columns in data
+
+Once you have finished populating the key with your own ids for each lane, selection **option 3**. Remember to assign the output of the function to an object so you can view your updated data.
 
 ### Saving output
+
+Check out your output, see if you are happy with it. Then use whatever method you like to save the output. Here we will use `write_csv()`. 
+
+We will also use the `file` object we created earlier to help renaming the output file.
+Notice how `file` contains the entire file path?  We just want file name, thats what `extract_file_name(file)` is for. It will pull out the relevant file name without the extension for us. 
+
+```{r}
+file_name <- extract_file_name(file)
+file_name
+```
+
+We will use `paste0()` to concatenate `output/`, the `file_name ` and `_cleaned.csv` to create the file path where your newly cleaned .csv will be saved.
+
+In the example below, the `.csv` will be saved in the `output/`.  Feel free to change the folder and suffix. Make sure that `output/` exists in your project directory.
+
+```{r}
+paste0("output/", file_name, "_cleaned.csv")
+
+write_csv(naming_lanes, 
+          file = paste0(file_name, "_cleaned.csv"))
+```
+

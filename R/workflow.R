@@ -30,7 +30,7 @@ processed <- map(raw_files_paths,
 
 # 2. Guess blanks (Optional)
 # Single file
-blank_ids <- guess_blanks(data, threshold = 101)
+blank_ids <- guess_blanks(data, threshold = 90)
 
 # Checking average air sat
 data %>% select(-c(1:3)) %>% colMeans()
@@ -86,7 +86,7 @@ test_bulk_rename <- map(blanks_renamed,
 list.files("data/") 
 
 
-write_csv(in_progress, "Block1-MR1_25hpf-16C-120523-1015_Oxygen_cleaned.csv")
+write_csv(in_progress, "Block1-MR1_20hpf-20C-120523-1022_Oxygen_cleaned.csv")
 
 # Bulk saving
 original_file_names <- map(list.files("data/"),

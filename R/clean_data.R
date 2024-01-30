@@ -107,7 +107,7 @@ remove_No_Sensor <- function(data,
   # Detect No Sensor row
   detect <- lapply(data, grep, pattern = 'No Sensor') 
   
-  # Star of No Sensor
+  # Start of No Sensor
   row_starts <- purrr::map(detect,
              ~dplyr::first(.x)) |> 
     purrr::map(purrr::discard, is.na) |> 
@@ -127,26 +127,50 @@ remove_No_Sensor <- function(data,
     unname() |> 
     unique()
   
+  
+  # When data contains no No Sensor
+  if(is.null(row_starts)){ 
+    replaced_data <- data 
+    message("There are no `No Sensor` values in this dataset")
+  }
+  
   # Partial No Sensor
   if(length(row_starts) > 1){
     warning("`No Sensor` detected for some vials, replacing `No Sensor` with NA")
-    no_sensor <- data[1:min(row_starts),] 
+    partial_no_sensor_row <- data[min(row_starts),] 
     
     # Replace No Sensor with NA
-    replaced <- apply(no_sensor, c(1,2), function(x) gsub("No Sensor",NA_character_, x)) |> tibble::tibble()
-    replaced_data <- replaced$`apply(...)`  |> tibble::as_tibble()
+    replaced <- apply(partial_no_sensor_row, c(1,2), function(x) gsub("No Sensor",NA_character_, x)) |> tibble::tibble()
+    replaced_row <- replaced$`apply(...)`  |> tibble::as_tibble()
+    
+    top_part <- data[1:min(row_starts) - 1,]
+    
+    replaced_data <- bind_rows(top_part, replaced_row) |> 
+      dplyr::arrange(`Time/Min.`)
+      
+    names(replaced_data) <- names(data)
+    return(replaced_data)
   } 
   
   # When data starts with No Sensor
-  if(row_starts == 1){
-    replaced_data <- data[-c(row_starts:row_ends),]
-  }
+  if(length(row_starts) > 0 & row_starts == 1 & row_ends < nrow(data)) {
+      replaced_data <- data[-c(row_starts:row_ends),]
+      return(replaced_data)
+    }
+  
   # When No Sensor is in the middle of the sheet
-  else {
-    replaced_data <- data[1:min(row_starts) - 1,] 
+  if(length(row_starts) > 0 & row_ends < nrow(data)){
+    replaced_data <- data[-c(row_starts:row_ends),]
+    return(replaced_data)
   }
     
-  return(replaced_data)
+  # When No Sensor is in the end of the sheet
+  if(length(row_starts) > 0 & row_ends == nrow(data)){
+    replaced_data <- data[-c(row_starts:row_ends),]
+    return(replaced_data)
+  }
+  
+  
 }
   
 #' Rename empty vials sequentially

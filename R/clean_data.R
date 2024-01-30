@@ -132,6 +132,7 @@ remove_No_Sensor <- function(data,
   if(is.null(row_starts)){ 
     replaced_data <- data 
     message("There are no `No Sensor` values in this dataset")
+    return(replaced_data)
   }
   
   # Partial No Sensor
@@ -239,7 +240,7 @@ create_date_time_cols <- function(data){
   date_slash <- stringr::str_replace_all(dates, "\\.", "/")
   
   # Treat dates as dates
-  date_correct <- lubridate::mdy(date_slash)
+  date_correct <- lubridate::dmy(date_slash)
   
   # Extract times
   times <- purrr::map(list_dt,
